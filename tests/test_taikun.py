@@ -1,7 +1,7 @@
 """Day 2: you write the tests.
 
 System under test: src/python_refresh/taikun_fake.py (read its docstring first).
-Fixtures: tests/conftest.py (TODO 1-4 live there).
+Fixtures: tests/conftest.py (1-4 live there).
 
     uv run pytest tests/test_taikun.py -v           # your tests must pass
     uv run python tools/check_mutants.py            # ...and catch all 8 planted bugs
@@ -9,17 +9,6 @@ Fixtures: tests/conftest.py (TODO 1-4 live there).
 Replace each TODO with one or more test functions.
 """
 
-import pytest
-
-from python_refresh.cluster import wait_until
-from python_refresh.taikun_fake import (
-    ClusterNotFoundError,
-    ClusterNotReadyError,
-    DuplicateClusterError,
-    QuotaExceededError,
-    UpgradeNotAllowedError,
-    ValidationError,
-)
 
 # ---------------------------------------------------------------------------
 # Part A: using fixtures
