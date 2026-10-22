@@ -16,8 +16,17 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.17.1",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-ra", "--strict-markers"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: Pyflakes, I: import order, N: naming (e.g. camelCase),
+# UP: modern syntax for your Python version, B: likely bugs (incl. mutable defaults)
+select = ["E", "W", "F", "I", "N", "UP", "B"]

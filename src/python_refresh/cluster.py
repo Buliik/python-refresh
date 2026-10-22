@@ -7,12 +7,14 @@ Implement everything marked TODO, then run:
 Work top to bottom; each section maps to one group of tests.
 Requires Python 3.10+ (your project uses 3.13).
 """
+
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterator, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 T = TypeVar("T")
 
@@ -24,32 +26,44 @@ class ClusterError(Exception):
     """Base class for every error raised by this module (given)."""
 
 
-# TODO: define DuplicatePoolError — a ClusterError raised when a node pool
-#       with the same name is added twice.
+class DuplicatePoolError(ClusterError):
+    """a ClusterError raised when a node pool with the same name is added twice."""
 
-# TODO: define InvalidVersionError — a ClusterError raised for a malformed
-#       Kubernetes version string.
+
+class InvalidVersionError(ClusterError):
+    """a ClusterError raised for a malformed Kubernetes version string."""
 
 
 # ---------------------------------------------------------------------------
 # 2. Dataclasses
 # ---------------------------------------------------------------------------
-# TODO: NodePool — an IMMUTABLE dataclass with fields:
-#         name: str
-#         size: int
-#         machine_type: str = "standard"
-#       Raise ValueError if size < 1 (hint: __post_init__).
+@dataclass(frozen=True)
+class NodePool:
+    name: str
+    size: int
+    machine_type: str = "standard"
+
+    def __post_init__(self) -> None:
+        if self.size < 1:
+            raise ValueError(f"Node pool {self.name!r} needs at least 1 node, got {self.size}")
 
 
-# TODO: Cluster — a mutable dataclass with fields:
-#         name: str
-#         k8s_version: str
-#         node_pools: list[NodePool]  — defaults to an empty list
-#                                       (careful: each Cluster needs its own list)
-#       Plus:
-#         total_nodes  — read-only property, sum of all pool sizes
-#         add_pool(pool) -> None — raises DuplicatePoolError if a pool
-#                                  with the same name already exists
+@dataclass
+class Cluster:
+    name: str
+    k8s_version: str
+    node_pools: list[NodePool] = field(default_factory=list)
+
+    @property
+    def total_nodes(self) -> int:
+        return sum(pool.size for pool in self.node_pools)
+
+    def add_pool(self, pool: NodePool) -> None:
+        if any(existing_pool.name == pool.name for existing_pool in self.node_pools):
+            raise DuplicatePoolError(
+                f"Node pool {pool.name!r} already exists in cluster {self.name!r}"
+            )
+        self.node_pools.append(pool)
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +74,12 @@ def parse_version(version: str) -> tuple[int, int, int]:
 
     Raise InvalidVersionError for anything else ("1.29", "abc", "1.x.3").
     """
-    raise NotImplementedError  # TODO
+    str_version = version.removeprefix("v")
+    sp_version = str_version.split(".")
+    if len(sp_version) != 3 or not all(part.isdecimal() for part in sp_version):
+        raise InvalidVersionError(f"Version {version!r} is not a valid version")
+    major, minor, patch = map(int, sp_version)
+    return major, minor, patch
 
 
 def can_upgrade(current: str, target: str) -> bool:
@@ -69,7 +88,11 @@ def can_upgrade(current: str, target: str) -> bool:
     - same minor with a higher patch (1.29.3 -> 1.29.5).
     Everything else (skipping minors, downgrades, same version) is False.
     """
-    raise NotImplementedError  # TODO
+    cmajor, cminor, cpatch = parse_version(current)
+    tmajor, tminor, tpatch = parse_version(target)
+    if cmajor != tmajor:
+        return False
+    return tminor == cminor + 1 or (tminor == cminor and tpatch > cpatch)
 
 
 # ---------------------------------------------------------------------------
@@ -94,8 +117,11 @@ def temporary_cluster(client: ClusterClient, name: str) -> Iterator[Any]:
         with temporary_cluster(client, "e2e-1") as cluster:
             ...
     """
-    raise NotImplementedError  # TODO
-    yield  # keeps this a generator until you implement it
+    cluster = client.create_cluster(name)
+    try:
+        yield cluster
+    finally:
+        client.delete_cluster(name)
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +138,14 @@ def wait_until(
     Raise TimeoutError (built-in) if `timeout` seconds pass first.
     Hint: time.monotonic(), not time.time().
     """
-    raise NotImplementedError  # TODO
+    deadline = time.monotonic() + timeout
+    while True:
+        result = predicate()
+        if result:
+            return result
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"Condition not met within {timeout!r} seconds")
+        time.sleep(interval)
 
 
 # ---------------------------------------------------------------------------
@@ -127,4 +160,6 @@ def unhealthy_pods(pods: list[dict[str, Any]]) -> list[str]:
 
         [{"name": "api-1", "status": "Running", "ready": True}, ...]
     """
-    raise NotImplementedError  # TODO
+    return [
+        pod["name"] for pod in pods if not (pod.get("status") == "Running" and pod.get("ready"))
+    ]

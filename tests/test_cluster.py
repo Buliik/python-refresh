@@ -1,4 +1,5 @@
 """Tests for Day 1. Don't edit these — make them pass by changing cluster.py."""
+
 import dataclasses
 import time
 
@@ -70,12 +71,12 @@ def test_parse_version_invalid(raw):
 @pytest.mark.parametrize(
     "current, target, allowed",
     [
-        ("1.29.3", "1.30.0", True),   # one minor up
-        ("1.29.3", "1.29.5", True),   # patch up
+        ("1.29.3", "1.30.0", True),  # one minor up
+        ("1.29.3", "1.29.5", True),  # patch up
         ("1.29.3", "1.31.0", False),  # skips a minor
         ("1.29.3", "1.28.9", False),  # downgrade
         ("1.29.3", "1.29.3", False),  # same version
-        ("1.29.3", "2.0.0", False),   # major change
+        ("1.29.3", "2.0.0", False),  # major change
     ],
 )
 def test_can_upgrade(current, target, allowed):
