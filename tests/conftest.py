@@ -5,7 +5,7 @@ available to every test in this folder by parameter name, with no import needed.
 """
 
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import suppress
 
 import pytest
@@ -55,7 +55,7 @@ def cluster(client: FakeTaikunClient, run_id: str) -> Iterator[ClusterInfo]:
 #   one that still exists. A test may already have deleted some, so ignore
 #   ClusterNotFoundError.
 @pytest.fixture
-def make_cluster(client: FakeTaikunClient, run_id: str) -> Iterator[callable[..., ClusterInfo]]:
+def make_cluster(client: FakeTaikunClient, run_id: str) -> Iterator[Callable[..., ClusterInfo]]:
     created_names: list[str] = []
 
     def _make_cluster(**kwargs) -> ClusterInfo:

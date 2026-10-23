@@ -9,16 +9,40 @@ Fixtures: tests/conftest.py (1-4 live there).
 Replace each TODO with one or more test functions.
 """
 
+import pytest
+
+from python_refresh.cluster import wait_until
+from python_refresh.taikun_fake import (
+    ClusterNotFoundError,
+    ClusterNotReadyError,
+    DuplicateClusterError,
+    QuotaExceededError,
+    UpgradeNotAllowedError,
+    ValidationError,
+)
+
 
 # ---------------------------------------------------------------------------
 # Part A: using fixtures
 # ---------------------------------------------------------------------------
-# TODO 5 — A new cluster (use the `cluster` fixture) is PENDING, with the
+# 5 — A new cluster (use the `cluster` fixture) is PENDING, with the
 #          default version "1.30.0" and 1 node.
+def test_cluster_pending(cluster):
+    assert cluster.status == "PENDING"
+    assert cluster.k8s_version == "1.30.0"
+    assert cluster.nodes == 1
 
-# TODO 6 — The cluster becomes RUNNING. Poll with your wait_until() and a short
+
+# 6 — The cluster becomes RUNNING. Poll with your wait_until() and a short
 #          timeout and interval (e.g. timeout=1, interval=0.01), never time.sleep.
-#          Mark this test @pytest.mark.slow (see TODO 16).
+#          Mark this test @pytest.mark.slow (see 16).
+@pytest.mark.slow
+def test_cluster_becomes_running(client, cluster):
+    running = wait_until(
+        lambda: client.get_cluster(cluster.name).status == "RUNNING", timeout=1, interval=0.01
+    )
+    assert running
+
 
 # ---------------------------------------------------------------------------
 # Part B: parametrize
@@ -27,8 +51,40 @@ Replace each TODO with one or more test functions.
 #          including edge cases (shortest and longest allowed). Give the cases
 #          readable ids with `ids=[...]` or pytest.param(..., id="...").
 
-# TODO 8 — Invalid names raise ValidationError. At least 5 cases. Use
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param("a", id="shortest"),
+        pytest.param("valid-name-with-dashes", id="normal"),
+        pytest.param("a" * 40, id="longest"),
+        pytest.param("1-name-starting-with-digit-123", id="with-digits"),
+    ],
+)
+def test_valid_names(client, name):
+    info = client.create_cluster(name=name)
+    assert info.name == name
+
+
+# 8 — Invalid names raise ValidationError. At least 5 cases. Use
 #          pytest.raises(ValidationError, match="Invalid cluster name").
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param("", id="empty"),
+        pytest.param("invalid_name_with_underscores", id="with-underscores"),
+        pytest.param("invalid-name-ending-with-dash-", id="ending-dash"),
+        pytest.param("-invalid-name-leading-with-dash", id="leading-dash"),
+        pytest.param("Invalid-name-uppercase", id="with-uppercase"),
+        pytest.param("a" * 41, id="too-long"),
+    ],
+)
+def test_invalid_names(client, name):
+    with pytest.raises(ValidationError, match="Invalid cluster name"):
+        client.create_cluster(name=name)
+
 
 # TODO 9 — Node count boundaries: 0, 1, 100 and 101 in ONE parametrized test.
 #          Hint: parametrize the expected outcome too, e.g. (nodes, should_pass).
